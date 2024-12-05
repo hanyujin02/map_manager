@@ -619,6 +619,38 @@ namespace mapManager{
 		}
 		return true;
 	}
+
+	void occMap::getRayCast(map_manager::RayCast::Request& req, std::vector<std::vector<Eigen::Vector3d>> &hitPoints){
+		double hres = req.hres * M_PI/180.0;
+		int numHbeams = int(360/req.hres);
+		double vres = double(((req.vfov_max - req.vfov_min)* M_PI/180.0)/(req.vbeams-1));
+		double vStartAngle = req.vfov_min * M_PI/180.0;
+		int numVbeams = req.vbeams;
+		double range = req.range;
+		Eigen::Vector3d start (req.position.x, req.position.y, req.position.z);
+
+
+		double starthAngle = req.startAngle;
+		hitPoints.resize(numHbeams);
+		for (int h=0; h<numHbeams; ++h){
+			double hAngle = starthAngle + double(h) * hres;
+			Eigen::Vector3d hdirection (cos(hAngle), sin(hAngle), 0.0); // horizontal direction 
+			for (int v=0; v<numVbeams; ++v){
+				// get hit points
+				double vAngle = vStartAngle + double(v) * vres;
+				double vup = tan(vAngle);
+				Eigen::Vector3d direction = hdirection;
+				direction(2) += vup;
+				direction /= direction.norm();
+				Eigen::Vector3d hitPoint;
+				bool success = this->castRay(start, direction, hitPoint, range, true, false);
+				if (not success){
+					hitPoint = start + range * direction;
+				}
+				hitPoints[h].push_back(hitPoint);
+			}
+		}
+	}
 	
 	void occMap::depthPoseCB(const sensor_msgs::ImageConstPtr& img, const geometry_msgs::PoseStampedConstPtr& pose){
 		// store current depth image
