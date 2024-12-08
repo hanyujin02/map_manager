@@ -162,7 +162,8 @@ namespace mapManager{
 		// service
 		bool checkCollision(map_manager::CheckPosCollision::Request& req, map_manager::CheckPosCollision::Response& res);		
 		bool getRayCast(map_manager::RayCast::Request& req, map_manager::RayCast::Response& res);
-
+		void getRayCast(map_manager::RayCast::Request& req, std::vector<std::vector<Eigen::Vector3d>> &hitPoints);
+		
 		// callback
 		void depthPoseCB(const sensor_msgs::ImageConstPtr& img, const geometry_msgs::PoseStampedConstPtr& pose);
 		void depthOdomCB(const sensor_msgs::ImageConstPtr& img, const nav_msgs::OdometryConstPtr& odom);
@@ -199,7 +200,7 @@ namespace mapManager{
 		double getRes();
 		void getMapRange(Eigen::Vector3d& mapSizeMin, Eigen::Vector3d& mapSizeMax);
 		void getCurrMapRange(Eigen::Vector3d& currRangeMin, Eigen::Vector3d& currRangeMax);
-		bool castRay(const Eigen::Vector3d& start, const Eigen::Vector3d& direction, Eigen::Vector3d& end, double maxLength=5.0, bool ignoreUnknown=true);
+		bool castRay(const Eigen::Vector3d& start, const Eigen::Vector3d& direction, Eigen::Vector3d& end, double maxLength=5.0, bool ignoreUnknown=true, bool useInflated = true);
 		void getRobotSize(Eigen::Vector3d &robotSize);
 
 		// Visualziation
@@ -448,7 +449,7 @@ namespace mapManager{
 		currRangeMax = this->currMapRangeMax_;
 	}
 
-	inline bool occMap::castRay(const Eigen::Vector3d& start, const Eigen::Vector3d& direction, Eigen::Vector3d& end, double maxLength, bool ignoreUnknown){
+	inline bool occMap::castRay(const Eigen::Vector3d& start, const Eigen::Vector3d& direction, Eigen::Vector3d& end, double maxLength, bool ignoreUnknown, bool useInflated){
 		// return true if raycasting successfully find the endpoint, otherwise return false
 
 		Eigen::Vector3d directionNormalized = direction/direction.norm(); // normalize the direction vector
@@ -456,16 +457,33 @@ namespace mapManager{
 		for (int i=1; i<num; ++i){
 			Eigen::Vector3d point = this->mapRes_ * directionNormalized * i + start;
 			if (ignoreUnknown){
-				if (this->isInflatedOccupied(point)){
-					end = point;
-					return true;
+				if (useInflated){
+					if (this->isInflatedOccupied(point)){
+						end = point;
+						return true;
+					}
+				}
+				else{
+					if (this->isOccupied(point)){
+						end = point;
+						return true;
+					}
 				}
 			}
 			else{
-				if (this->isInflatedOccupied(point) or this->isUnknown(point)){
-					end = point;
-					return true;
-				}	
+				if (useInflated){
+					if (this->isInflatedOccupied(point) or this->isUnknown(point)){
+						end = point;
+						return true;
+					}
+				}
+				else{
+					if (this->isOccupied(point) or this->isUnknown(point)){
+						end = point;
+						return true;
+					}
+				}
+					
 			}
 		}
 		end = start;

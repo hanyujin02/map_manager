@@ -484,7 +484,7 @@ namespace mapManager{
 	}
 
 	void occMap::registerCallback(){
-		if (this->sensorInputMode_ == 0 or this->sensorInputMode_ == 2){
+		if (this->sensorInputMode_ == 0){
 			// depth pose callback
 			this->depthSub_.reset(new message_filters::Subscriber<sensor_msgs::Image>(this->nh_, this->depthTopicName_, 50));
 			if (this->localizationMode_ == 0){
@@ -502,7 +502,7 @@ namespace mapManager{
 				exit(0);
 			}
 		}
-		if (this->sensorInputMode_ == 1 or this->sensorInputMode_ == 2){
+		else if (this->sensorInputMode_ == 1){
 			// pointcloud callback
 			this->pointcloudSub_.reset(new message_filters::Subscriber<sensor_msgs::PointCloud2>(this->nh_, this->pointcloudTopicName_, 50));
 			if (this->localizationMode_ == 0){
@@ -618,6 +618,38 @@ namespace mapManager{
 			}
 		}
 		return true;
+	}
+
+	void occMap::getRayCast(map_manager::RayCast::Request& req, std::vector<std::vector<Eigen::Vector3d>> &hitPoints){
+		double hres = req.hres * M_PI/180.0;
+		int numHbeams = int(360/req.hres);
+		double vres = double(((req.vfov_max - req.vfov_min)* M_PI/180.0)/(req.vbeams-1));
+		double vStartAngle = req.vfov_min * M_PI/180.0;
+		int numVbeams = req.vbeams;
+		double range = req.range;
+		Eigen::Vector3d start (req.position.x, req.position.y, req.position.z);
+
+
+		double starthAngle = req.startAngle;
+		hitPoints.resize(numHbeams);
+		for (int h=0; h<numHbeams; ++h){
+			double hAngle = starthAngle + double(h) * hres;
+			Eigen::Vector3d hdirection (cos(hAngle), sin(hAngle), 0.0); // horizontal direction 
+			for (int v=0; v<numVbeams; ++v){
+				// get hit points
+				double vAngle = vStartAngle + double(v) * vres;
+				double vup = tan(vAngle);
+				Eigen::Vector3d direction = hdirection;
+				direction(2) += vup;
+				direction /= direction.norm();
+				Eigen::Vector3d hitPoint;
+				bool success = this->castRay(start, direction, hitPoint, range, true, false);
+				if (not success){
+					hitPoint = start + range * direction;
+				}
+				hitPoints[h].push_back(hitPoint);
+			}
+		}
 	}
 	
 	void occMap::depthPoseCB(const sensor_msgs::ImageConstPtr& img, const geometry_msgs::PoseStampedConstPtr& pose){
