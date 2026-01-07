@@ -200,7 +200,7 @@ namespace mapManager{
 		double getRes();
 		void getMapRange(Eigen::Vector3d& mapSizeMin, Eigen::Vector3d& mapSizeMax);
 		void getCurrMapRange(Eigen::Vector3d& currRangeMin, Eigen::Vector3d& currRangeMax);
-		bool castRay(const Eigen::Vector3d& start, const Eigen::Vector3d& direction, Eigen::Vector3d& end, double maxLength=5.0, bool ignoreUnknown=true, bool useInflated = true);
+		bool castRay(const Eigen::Vector3d& start, const Eigen::Vector3d& direction, Eigen::Vector3d& end, double maxLength=5.0, bool ignoreUnknown=true, bool useInflated = false);
 		void getRobotSize(Eigen::Vector3d &robotSize);
 
 		// Visualziation
